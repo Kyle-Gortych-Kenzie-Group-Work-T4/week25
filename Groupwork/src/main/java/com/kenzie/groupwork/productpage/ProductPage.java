@@ -1,20 +1,11 @@
 package com.kenzie.groupwork.productpage;
 
-import com.kenzie.groupwork.productpage.types.PriceRangeOption;
-import com.kenzie.groupwork.productpage.types.PrimeOption;
-import com.kenzie.groupwork.productpage.types.ProductImagesV2;
-import com.kenzie.groupwork.productpage.types.ProductV2;
-import com.kenzie.groupwork.productpage.types.ShippingProgramEnum;
-import com.kenzie.groupwork.productpage.types.SortByEnum;
+import com.kenzie.groupwork.productpage.types.*;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static com.fasterxml.jackson.databind.type.LogicalType.Collection;
 import static com.kenzie.groupwork.productpage.types.SortByEnum.PRICE_HIGH_TO_LOW;
 import static com.kenzie.groupwork.productpage.types.SortByEnum.PRICE_LOW_TO_HIGH;
 import static com.kenzie.groupwork.productpage.types.SortByEnum.REWARD_HIGH_TO_LOW;
@@ -46,17 +37,9 @@ public class ProductPage {
      * @return An Optional with the winning BuyingOption, or empty if none.
      */
     public Optional<ProductV2.BuyingOption> getFirstBuyingOption() {
-        //3 points: one assignment for 2 points and one method call for 1 point
-        List<ProductV2.BuyingOption> buyingOptions = productV2.buyingOptions();
-        //2 points: one conditional ! for 1 point, and one method call for 1 point
-        if (!buyingOptions.isEmpty()) {
-            //2 points: one return for 1 point and one method call for 1 point
-            return buyingOptions.stream()
-                    //1 point: one method call for 1 point
-                .findFirst();
-        }
-        //2 points: one return for 1 point and one method call for 1 point
-        return Optional.empty();
+        // +1 for stream, +1 for findFirst
+        return productV2.buyingOptions().stream() // +1
+                .findFirst(); // +1
     }
 
     /**
@@ -73,27 +56,15 @@ public class ProductPage {
      * @return Optional containing the image URL, or empty if no image exists.
      */
     public Optional<String> extractMainImageUrl(Integer longestDimension) {
-        //3 points: one assignment for 2 points and one method call for 1 point
-        Optional<ProductImagesV2> productImagesOptional = productV2.productImages();
-        //1 points: one method call for 1 point
-        if (productImagesOptional.isPresent()) {
-            //3 points: one assignment for 2 points and one method call for 1 point
-            ProductImagesV2 productImages = productImagesOptional.get();
-            //3 points: one assignment for 2 points and one method call for 1 point
-            List<ProductImagesV2.Image> images = productImages.images();
-            //0 points: for loops declarations are free and no other methods called in declaration
-            for (ProductImagesV2.Image image : images) {
-                //3 points: one assignment for 2 points and one method call for 1 point
-                String url = extractImageUrl(image, longestDimension);
-                //1 point: one comparison for 1 point
-                if (url != null) {
-                    //2 points: one return for 1 point and 1 method call for 1 point
-                    return Optional.of(url);
-                }
-            }
-        }
-        //2 points: one return for 1 point and 1 method call for 1 point
-        return Optional.empty();
+        // Golf score: 4
+        // +1 for method call, +1 flatMap, +1 map, +1 orElse
+        return productV2.productImages()
+                .map(ProductImagesV2::images)
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(image->extractImageUrl(image,longestDimension))
+                .filter(Objects::nonNull)
+                .findFirst();
     }
 
     /**
@@ -107,32 +78,15 @@ public class ProductPage {
      * @return An Optional containing the URL of the image, or empty if no image exists.
      */
     public Optional<String> extractLookImageUrl(Integer longestDimension) {
-        //3 points: one assignment for 2 points and one method call for 1 point
-        Optional<ProductImagesV2> productImages = productV2.productImages();
-        //1 points: one method call for 1 point
-        if (productImages.isPresent()) {
-            //3 points: one assignment for 2 points and one method call for 1 point
-            ProductImagesV2 productImagesV2 = productImages.get();
-            //3 points: one assignment for 2 points and one method call for 1 point
-            List<ProductImagesV2.Image> images = productImagesV2.images();
-            //0 points: for loops declarations are free and no other methods called in declaration
-            for (ProductImagesV2.Image image : images) {
-                //3 points: one assignment for 2 points and one method call for 1 point
-                String variant = image.variant();
-                //3 points: one comparison for 1 point, one conditional for 1 point, and one method call for 1 point
-                if (variant != null && variant.equals(LOOK_VARIANT)) {
-                    //3 points: one assignment for 2 points and one method call for 1 point
-                    String url = extractImageUrl(image, longestDimension);
-                    //1 point: one comparison for 1 point
-                    if (url != null) {
-                        //2 points: one return for 1 point and 1 method call for 1 point
-                        return Optional.of(url);
-                    }
-                }
-            }
-        }
-        //2 points: one return for 1 point and 1 method call for 1 point
-        return Optional.empty();
+        // Golf score: 4
+        return productV2.productImages()
+                .map(ProductImagesV2::images)
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(image -> LOOK_VARIANT.equals(image.variant()))
+                .map(image -> extractImageUrl(image, longestDimension))
+                .filter(Objects::nonNull)
+                .findFirst();
     }
 
     /**
@@ -150,39 +104,31 @@ public class ProductPage {
     public List<ProductV2> getSimilarProducts(final SortByEnum sortBy,
                                               final PriceRangeOption priceRange,
                                               final PrimeOption primeOption) {
-
-        //4 points: one assignment for 2 points, two method calls for 1 point each
-        Comparator<ProductV2> sorter = comparatorForSortBy.getOrDefault(sortBy, passthroughComparator());
-        //3 points: one assignment for 2 points and one method call for 1 point
-        final List<ProductV2> unorderedProducts = productV2.getSimilarProducts();
-        //3 points: one assignment for 2 points and one constructor for 1 point
-        final List<ProductV2> matchingProducts = new ArrayList<>();
-        //1 point: one comparison for 1 point
-        if (unorderedProducts != null) {
-            //0 points: one for loop declaration with no other methods in the declaration
-            for (ProductV2 product : unorderedProducts) {
-                //2 point: one method call for 1 point and one conditional for 1 point
-                if (Objects.nonNull(product) &&
-                        //2 point: one method call for 1 point and one conditional for 1 point
-                    product.isValid() &&
-                        //2 points: two method calls for 1 point each
-                    priceRange.priceIsWithin(product.getPrice())) {
-                    //1 point: one method call inside the for loop declaraion for 1 point
-                    for (ShippingProgramEnum shippingProgram : product.getShippingPrograms()) {
-                        //1 point: one method call for 1 point
-                        if (primeOption.matches(shippingProgram)) {
-                            //1 point: one method call for 1 point
-                            matchingProducts.add(product);
-                            break;
-                        }
+        // Golf score: 6
+        // +1 stream, +1 filter, +1 sorted, +1 collect, +1 sort with lambda
+        return Optional.ofNullable(productV2.getSimilarProducts())
+                .orElse(Collections.emptyList()) // +1 for  null
+                .stream() // Start stream
+                .filter(product ->
+                        Objects.nonNull(product) && product.isValid() &&
+                                priceRange.priceIsWithin(product.getPrice()) &&
+                                product.getShippingPrograms().stream().anyMatch(primeOption::matches)
+                ) // +1 for filter
+                .sorted((product1, product2) -> { //sorting logic
+                    switch (sortBy) {
+                        case REWARD_LOW_TO_HIGH:
+                            return product1.getTotalBenefitAmount().compareTo(product2.getTotalBenefitAmount());
+                        case REWARD_HIGH_TO_LOW:
+                            return product2.getTotalBenefitAmount().compareTo(product1.getTotalBenefitAmount());
+                        case PRICE_LOW_TO_HIGH:
+                            return product1.getPrice().compareTo(product2.getPrice());
+                        case PRICE_HIGH_TO_LOW:
+                            return product2.getPrice().compareTo(product1.getPrice());
+                        default:
+                            return 0; // no sorting
                     }
-                }
-            }
-        }
-        //1 point: one method call for 1 point
-        matchingProducts.sort(sorter);
-        //1 point: one return for 1 point
-        return matchingProducts;
+                }) // +1 for sort
+                .collect(Collectors.toList()); // +1 for collect
     }
 
     /**
@@ -191,9 +137,9 @@ public class ProductPage {
     private String extractImageUrl(ProductImagesV2.Image image, Integer longest) {
         // Looks like a Stream or Optional, but it's a Builder.
         return image.lowRes().styleBuilder()
-            .scaleToLongest(longest)
-            .build()
-            .url();
+                .scaleToLongest(longest)
+                .build()
+                .url();
     }
 
     /**
