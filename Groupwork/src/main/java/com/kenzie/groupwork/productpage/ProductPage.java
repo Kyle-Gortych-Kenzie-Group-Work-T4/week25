@@ -104,31 +104,18 @@ public class ProductPage {
     public List<ProductV2> getSimilarProducts(final SortByEnum sortBy,
                                               final PriceRangeOption priceRange,
                                               final PrimeOption primeOption) {
-        // Golf score: 6
-        // +1 stream, +1 filter, +1 sorted, +1 collect, +1 sort with lambda
         return Optional.ofNullable(productV2.getSimilarProducts())
-                .orElse(Collections.emptyList()) // +1 for  null
-                .stream() // Start stream
-                .filter(product ->
-                        Objects.nonNull(product) && product.isValid() &&
-                                priceRange.priceIsWithin(product.getPrice()) &&
-                                product.getShippingPrograms().stream().anyMatch(primeOption::matches)
-                ) // +1 for filter
-                .sorted((product1, product2) -> { //sorting logic
-                    switch (sortBy) {
-                        case REWARD_LOW_TO_HIGH:
-                            return product1.getTotalBenefitAmount().compareTo(product2.getTotalBenefitAmount());
-                        case REWARD_HIGH_TO_LOW:
-                            return product2.getTotalBenefitAmount().compareTo(product1.getTotalBenefitAmount());
-                        case PRICE_LOW_TO_HIGH:
-                            return product1.getPrice().compareTo(product2.getPrice());
-                        case PRICE_HIGH_TO_LOW:
-                            return product2.getPrice().compareTo(product1.getPrice());
-                        default:
-                            return 0; // no sorting
-                    }
-                }) // +1 for sort
-                .collect(Collectors.toList()); // +1 for collect
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(ProductV2::isValid)
+                .filter(product -> priceRange.priceIsWithin(product.getPrice()))
+                .filter(product -> product
+                        .getShippingPrograms()
+                        .stream()
+                        .anyMatch(primeOption::matches))
+                .sorted(comparatorForSortBy.getOrDefault(sortBy, passthroughComparator()))
+                .collect(Collectors.toList());
     }
 
     /**
